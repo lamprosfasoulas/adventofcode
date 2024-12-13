@@ -16,8 +16,8 @@ func main(){
     /*
     for i:=range chart{
         chart[i] = make([]string,20)
-    }
-*/
+    }*/
+
     sc := bufio.NewScanner(file)
     i:=0
     for sc.Scan(){
