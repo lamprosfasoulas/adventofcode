@@ -3,26 +3,86 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
-	"time"
+	"syscall"
+	//"time"
+
+	"github.com/gdamore/tcell/v2"
 )
+//Press n to go to the next Second
+//Press p to go to the previous Second
+//For part 2 set time to 7000
 const (
     HEIGHT  =103
     WIDTH   = 101
 )
-
-func main(){
-    times:= 0
-    ticker := time.NewTicker(10 * time.Millisecond)
-    for range ticker.C{
-        //fmt.Println(times)
-        run(times)
-        if times == 10000{
-            break
+func draw(s tcell.Screen, arr [HEIGHT][WIDTH]int){
+    s.Clear()
+    for i,row := range arr{
+        for j,val := range row{
+            var ch rune
+            if val == 0{
+                ch = '.'
+            }else{
+                ch = '@' 
+            }
+            s.SetContent(i,j,ch,nil,tcell.StyleDefault.Foreground(tcell.ColorWhite))
         }
-        times++
+    }
+    s.Show()
+
+}
+func main(){
+    times:= 7500
+    //ticker := time.NewTicker(1 * time.Second/300)
+    s,err := tcell.NewScreen()
+    if err != nil{
+        log.Fatalf("Failed to create screen: %v",err)
+    }
+    if err := s.Init(); err != nil{
+        log.Fatalf("Failed to initialize screen: %v",err)
+    }
+    defer s.Fini()
+    signalChan := make(chan os.Signal,1)
+    signal.Notify(signalChan,syscall.SIGINT)
+    /*go func(){
+        for range ticker.C{
+            run(times)
+            draw(s,run(times))
+            fmt.Println(times)
+            if times == 10000{
+                break
+            }
+            times++
+        }
+    }()*/
+    for {
+        event := s.PollEvent()
+        switch ev := event.(type){
+        case *tcell.EventKey:
+            if ev.Key() == tcell.KeyRune && ev.Rune() == 'q'{
+                log.Println("Quitting")
+                s.Clear()
+                s.Show()
+                return
+            }
+            if ev.Key() == tcell.KeyRune && ev.Rune() == 'n'{
+                //run(times)
+                times++
+                draw(s,run(times))
+                fmt.Println(" Seconds: ",times)
+            }
+            if ev.Key() == tcell.KeyRune && ev.Rune() == 'p'{
+                times--
+                //run(times)
+                draw(s,run(times))
+                fmt.Println(" Seconds: ",times)
+            }
+        }
     }
 }
 func run(sec int)[HEIGHT][WIDTH]int{
@@ -44,6 +104,7 @@ func run(sec int)[HEIGHT][WIDTH]int{
         arr[i][j] +=1
     }
     quad(&arr)
+    fmt.Print(" Part 1 result: ",quad(&arr))//the result for part 1
     return arr
     //fmt.Println(theone)
     //fmt.Println(result)
