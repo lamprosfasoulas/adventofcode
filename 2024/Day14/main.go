@@ -3,16 +3,14 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
-	//"time"
+	"time"
 
-	"github.com/gdamore/tcell/v2"
+    tea "github.com/charmbracelet/bubbletea"
 )
+
 //Press n to go to the next Second
 //Press p to go to the previous Second
 //For part 2 set time to 7000
@@ -20,71 +18,80 @@ const (
     HEIGHT  =103
     WIDTH   = 101
 )
-func draw(s tcell.Screen, arr [HEIGHT][WIDTH]int){
-    s.Clear()
-    for i,row := range arr{
-        for j,val := range row{
-            var ch rune
-            if val == 0{
-                ch = '.'
-            }else{
-                ch = '@' 
-            }
-            s.SetContent(i,j,ch,nil,tcell.StyleDefault.Foreground(tcell.ColorWhite))
-        }
-    }
-    s.Show()
-
+var times int = 7000
+type model struct{
+    cells [HEIGHT][WIDTH]int
+    part1 int
+    sec int
 }
-func main(){
-    times:= 7500
-    //ticker := time.NewTicker(1 * time.Second/300)
-    s,err := tcell.NewScreen()
-    if err != nil{
-        log.Fatalf("Failed to create screen: %v",err)
+func (m model) Init()tea.Cmd{
+    return nil
+}
+func (m model) Update(msg tea.Msg) (tea.Model,tea.Cmd){
+    switch msg := msg.(type){
+    case tea.KeyMsg:
+        switch msg.String(){
+        case "n":
+            times++
+            m.cells = run(times)
+        case "p":
+            times--
+            m.cells = run(times)
+
+        case "q":
+            return m,tea.Quit
+        }
+
     }
-    if err := s.Init(); err != nil{
-        log.Fatalf("Failed to initialize screen: %v",err)
-    }
-    defer s.Fini()
-    signalChan := make(chan os.Signal,1)
-    signal.Notify(signalChan,syscall.SIGINT)
-    /*go func(){
-        for range ticker.C{
-            run(times)
-            draw(s,run(times))
-            fmt.Println(times)
-            if times == 10000{
-                break
+    return m,nil
+}
+func (m model) View()string{
+    var s string
+    for i:=0;i<HEIGHT;i++{
+        for j:=0;j<WIDTH;j++{
+            if m.cells[i][j] == 0{
+                s += "."
+            }else{
+                s += "#"
             }
+        }
+        s += "\n"
+    }
+    if times == 100{
+        s += fmt.Sprintf("First: %d\n",quad(&m.cells))
+    }
+    s += fmt.Sprintf("Second: %d\n",times)
+    return s
+}
+
+func initialModel() model{
+    return model{
+        cells: [HEIGHT][WIDTH]int{}, 
+        part1: 0,
+        sec: 0,
+    }
+}
+
+func main(){
+    var com string
+    fmt.Scanln(&com)
+    if com == "sec"{
+        start := time.Now()
+        for times < 10000{
+            run(times)
             times++
         }
-    }()*/
-    for {
-        event := s.PollEvent()
-        switch ev := event.(type){
-        case *tcell.EventKey:
-            if ev.Key() == tcell.KeyRune && ev.Rune() == 'q'{
-                log.Println("Quitting")
-                s.Clear()
-                s.Show()
-                return
-            }
-            if ev.Key() == tcell.KeyRune && ev.Rune() == 'n'{
-                //run(times)
-                times++
-                draw(s,run(times))
-                fmt.Println(" Seconds: ",times)
-            }
-            if ev.Key() == tcell.KeyRune && ev.Rune() == 'p'{
-                times--
-                //run(times)
-                draw(s,run(times))
-                fmt.Println(" Seconds: ",times)
-            }
-        }
+        fmt.Println("Time: ",time.Since(start))
+        fmt.Printf("The second of the tree must be: %d\n",part2)
+        os.Exit(0)
+    }
+    p := tea.NewProgram(initialModel())
+    if _,err := p.Run();err != nil{
+        fmt.Println("Error: ",err)
+        os.Exit(1)
     }
 }
+var part2,safety int
 func run(sec int)[HEIGHT][WIDTH]int{
     var arr [HEIGHT][WIDTH]int
     file,_ := os.Open("day14")
@@ -103,8 +110,18 @@ func run(sec int)[HEIGHT][WIDTH]int{
         i,j := test(x,y,vx,vy,sec)
         arr[i][j] +=1
     }
-    quad(&arr)
-    fmt.Print(" Part 1 result: ",quad(&arr))//the result for part 1
+    if safety == 0{
+        safety = quad(&arr)
+        part2= sec
+    }
+    if quad(&arr) < safety{
+        safety = quad(&arr)
+        part2 = sec
+    }
+    if sec == 100{
+        fmt.Println(" Part 1 result: ",quad(&arr))
+    }
+    //fmt.Print(" Part 1 result: ",quad(&arr))//the result for part 1
     return arr
     //fmt.Println(theone)
     //fmt.Println(result)
